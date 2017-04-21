@@ -1,4 +1,5 @@
 // Define our global variables
+var Timer         = null;
 var GoogleMap     = null;
 var Planes        = {};
 var PlanesOnMap   = 0;
@@ -17,6 +18,10 @@ CenterLat = Number(localStorage['CenterLat']) || CONST_CENTERLAT;
 CenterLon = Number(localStorage['CenterLon']) || CONST_CENTERLON;
 ZoomLvl   = Number(localStorage['ZoomLvl']) || CONST_ZOOMLVL;
 
+$(document).ready(function() {
+	initialize();
+});
+
 function fetchData() {
 	$.getJSON('/dump1090/data.json', function(data) {
 		PlanesOnMap = 0
@@ -32,10 +37,12 @@ function fetchData() {
 				var plane = jQuery.extend(true, {}, planeObject);
 			}
 			
-			/* For special squawk tests
+			/*
+			// For special squawk tests
 			if (data[j].hex == '48413x') {
             	data[j].squawk = '7700';
-            } //*/
+            }
+            */
             
             // Set SpecialSquawk-value
             if (data[j].squawk == '7500' || data[j].squawk == '7600' || data[j].squawk == '7700') {
@@ -60,75 +67,6 @@ function initialize() {
 	for(var type in google.maps.MapTypeId) {
 		mapTypeIds.push(google.maps.MapTypeId[type]);
 	}
-	// Push OSM on to the end
-	mapTypeIds.push("OSM");
-	mapTypeIds.push("dark_map");
-
-	// Styled Map to outline airports and highways
-	var styles = [
-		{
-			"featureType": "administrative",
-			"stylers": [
-				{ "visibility": "off" }
-			]
-		},{
-			"featureType": "landscape",
-			"stylers": [
-				{ "visibility": "off" }
-			]
-		},{
-			"featureType": "poi",
-			"stylers": [
-				{ "visibility": "off" }
-			]
-		},{
-			"featureType": "road",
-			"stylers": [
-				{ "visibility": "off" }
-			]
-		},{
-			"featureType": "transit",
-			"stylers": [
-				{ "visibility": "off" }
-			]
-		},{
-			"featureType": "landscape",
-			"stylers": [
-				{ "visibility": "on" },
-				{ "weight": 8 },
-				{ "color": "#000000" }
-			]
-		},{
-			"featureType": "water",
-			"stylers": [
-			{ "lightness": -74 }
-			]
-		},{
-			"featureType": "transit.station.airport",
-			"stylers": [
-				{ "visibility": "on" },
-				{ "weight": 8 },
-				{ "invert_lightness": true },
-				{ "lightness": 27 }
-			]
-		},{
-			"featureType": "road.highway",
-			"stylers": [
-				{ "visibility": "simplified" },
-				{ "invert_lightness": true },
-				{ "gamma": 0.3 }
-			]
-		},{
-			"featureType": "road",
-			"elementType": "labels",
-			"stylers": [
-				{ "visibility": "off" }
-			]
-		}
-	]
-
-	// Add our styled map
-	var styledMap = new google.maps.StyledMapType(styles, {name: "Dark Map"});
 
 	// Define the Google Map
 	var mapOptions = {
@@ -140,24 +78,16 @@ function initialize() {
 		mapTypeControlOptions: {
 			mapTypeIds: mapTypeIds,
 			position: google.maps.ControlPosition.TOP_LEFT,
-			style: google.maps.MapTypeControlStyle.DROPDOWN_MENU
-		}
+			// style: google.maps.MapTypeControlStyle.DROPDOWN_MENU
+		},
+
+		// styles: [{"featureType":"all","stylers":[{"saturation":0},{"hue":"#e7ecf0"}]},{"featureType":"road","stylers":[{"saturation":-70}]},{"featureType":"transit","stylers":[{"visibility":"off"}]},{"featureType":"poi","stylers":[{"visibility":"off"}]},{"featureType":"water","stylers":[{"visibility":"simplified"},{"saturation":-60}]}]
+		//styles: [{"featureType":"administrative","elementType":"all","stylers":[{"visibility":"off"}]},{"featureType":"landscape","elementType":"all","stylers":[{"visibility":"simplified"},{"hue":"#0066ff"},{"saturation":74},{"lightness":100}]},{"featureType":"poi","elementType":"all","stylers":[{"visibility":"simplified"}]},{"featureType":"road","elementType":"all","stylers":[{"visibility":"simplified"}]},{"featureType":"road.highway","elementType":"all","stylers":[{"visibility":"off"},{"weight":0.6},{"saturation":-85},{"lightness":61}]},{"featureType":"road.highway","elementType":"geometry","stylers":[{"visibility":"on"}]},{"featureType":"road.arterial","elementType":"all","stylers":[{"visibility":"off"}]},{"featureType":"road.local","elementType":"all","stylers":[{"visibility":"on"}]},{"featureType":"transit","elementType":"all","stylers":[{"visibility":"simplified"}]},{"featureType":"water","elementType":"all","stylers":[{"visibility":"simplified"},{"color":"#5f94ff"},{"lightness":26},{"gamma":5.86}]}]
+		// styles: [{"featureType":"water","stylers":[{"saturation":43},{"lightness":-11},{"hue":"#0088ff"}]},{"featureType":"road","elementType":"geometry.fill","stylers":[{"hue":"#ff0000"},{"saturation":-100},{"lightness":99}]},{"featureType":"road","elementType":"geometry.stroke","stylers":[{"color":"#808080"},{"lightness":54}]},{"featureType":"landscape.man_made","elementType":"geometry.fill","stylers":[{"color":"#ece2d9"}]},{"featureType":"poi.park","elementType":"geometry.fill","stylers":[{"color":"#ccdca1"}]},{"featureType":"road","elementType":"labels.text.fill","stylers":[{"color":"#767676"}]},{"featureType":"road","elementType":"labels.text.stroke","stylers":[{"color":"#ffffff"}]},{"featureType":"poi","stylers":[{"visibility":"off"}]},{"featureType":"landscape.natural","elementType":"geometry.fill","stylers":[{"visibility":"on"},{"color":"#b8cb93"}]},{"featureType":"poi.park","stylers":[{"visibility":"on"}]},{"featureType":"poi.sports_complex","stylers":[{"visibility":"on"}]},{"featureType":"poi.medical","stylers":[{"visibility":"on"}]},{"featureType":"poi.business","stylers":[{"visibility":"simplified"}]}]
 	};
 
-	GoogleMap = new google.maps.Map(document.getElementById("map_canvas"), mapOptions);
+	GoogleMap = new google.maps.Map(document.getElementById("map"), mapOptions);
 
-	//Define OSM map type pointing at the OpenStreetMap tile server
-	GoogleMap.mapTypes.set("OSM", new google.maps.ImageMapType({
-		getTileUrl: function(coord, zoom) {
-			return "http://tile.openstreetmap.org/" + zoom + "/" + coord.x + "/" + coord.y + ".png";
-		},
-		tileSize: new google.maps.Size(256, 256),
-		name: "OpenStreetMap",
-		maxZoom: 18
-	}));
-
-	GoogleMap.mapTypes.set("dark_map", styledMap);
-	
 	// Listeners for newly created Map
     google.maps.event.addListener(GoogleMap, 'center_changed', function() {
         localStorage['CenterLat'] = GoogleMap.getCenter().lat();
@@ -180,35 +110,23 @@ function initialize() {
           position: siteMarker,
           map: GoogleMap,
           icon: markerImage,
-          title: 'My Radar Site',
+          title: 'Radar Location',
           zIndex: -99999
         });
         
-        if (SiteCircles) {
-            for (var i=0;i<SiteCirclesDistances.length;i++) {
-              drawCircle(marker, SiteCirclesDistances[i]); // in meters
-            }
-        }
+		if (SiteCircles) {
+			for (var i=0;i<SiteCirclesDistances.length;i++) {
+				drawCircle(marker, SiteCirclesDistances[i]); // in meters
+			}
+		}
 	}
-	
-	// These will run after page is complitely loaded
-	$(window).load(function() {
-        $('#dialog-modal').css('display', 'inline'); // Show hidden settings-windows content
-    });
-
-	// Load up our options page
-	optionsInitalize();
-
-	// Did our crafty user need some setup?
-	extendedInitalize();
-	
+		
 	// Setup our timer to poll from the server.
-	window.setInterval(function() {
+	Timer = window.setInterval(function() {
 		fetchData();
 		refreshTableInfo();
 		refreshSelected();
 		reaper();
-		extendedPulse();
 	}, 1000);
 }
 
@@ -241,56 +159,59 @@ function refreshSelected() {
     }
 	
 	var columns = 2;
-	var html = '';
+	var html = '<table>';
 	
-	if (selected) {
-    	html += '<table id="selectedinfo" width="100%">';
-    } else {
-        html += '<table id="selectedinfo" class="dim" width="100%">';
-    }
-	
+    html += '<tr><th colspan="' + columns + '">';
+
 	// Flight header line including squawk if needed
-	if (selected && selected.flight == "") {
-	    html += '<tr><td colspan="' + columns + '" id="selectedinfotitle"><b>N/A (' +
-	        selected.icao + ')</b>';
+	if (selected && (selected.flight == "" || selected.flight == "????????")) {
+	    html += 'UNKNOWN';
 	} else if (selected && selected.flight != "") {
-	    html += '<tr><td colspan="' + columns + '" id="selectedinfotitle"><b>' +
-	        selected.flight + '</b>';
+	    html += selected.flight;
 	} else {
-	    html += '<tr><td colspan="' + columns + '" id="selectedinfotitle"><b>DUMP1090</b>';
+	    html += 'No Aircraft Selected';
 	}
-	
+
+	html += '</th></tr>';
+
 	if (selected && selected.squawk == 7500) { // Lets hope we never see this... Aircraft Hijacking
-		html += '&nbsp;<span class="squawk7500">&nbsp;Squawking: Aircraft Hijacking&nbsp;</span>';
+		html += '<tr><td colspan="' + columns + '" class="squawk squawk7500">Squawking: Aircraft Hijacking</td></tr>';
 	} else if (selected && selected.squawk == 7600) { // Radio Failure
-		html += '&nbsp;<span class="squawk7600">&nbsp;Squawking: Radio Failure&nbsp;</span>';
+		html += '<tr><td colspan="' + columns + '" class="squawk squawk7600">Squawking: Radio Failure</td></tr>';
 	} else if (selected && selected.squawk == 7700) { // General Emergency
-		html += '&nbsp;<span class="squawk7700">&nbsp;Squawking: General Emergency&nbsp;</span>';
-	} else if (selected && selected.flight != '') {
-		html += '&nbsp;<a href="http://fr24.com/'+selected.flight+'" target="_blank">[FR24]</a>';
-	    html += '&nbsp;<a href="http://www.flightstats.com/go/FlightStatus/flightStatusByFlight.do?';
-        html += 'flightNumber='+selected.flight+'" target="_blank">[FlightStats]</a>';
-	    html += '&nbsp;<a href="http://flightaware.com/live/flight/'+selected.flight+'" target="_blank">[FlightAware]</a>';
+		html += '<tr><td colspan="' + columns + '" class="squawk squawk7700">Squawking: General Emergency</td></tr>';
 	}
-	html += '<td></tr>';
 	
+	html += '<tr>';
+
+	html += '<td><strong>Altitude: </strong>';
+
 	if (selected) {
 	    if (Metric) {
-        	html += '<tr><td>Altitude: ' + Math.round(selected.altitude / 3.2828) + ' m</td>';
+        	html += Math.round(selected.altitude / 3.2828) + ' m';
         } else {
-            html += '<tr><td>Altitude: ' + selected.altitude + ' ft</td>';
+            html += selected.altitude + ' ft';
         }
     } else {
-        html += '<tr><td>Altitude: n/a</td>';
+        html += '&mdash;';
     }
-		
-	if (selected && selected.squawk != '0000') {
-		html += '<td>Squawk: ' + selected.squawk + '</td></tr>';
-	} else {
-	    html += '<td>Squawk: n/a</td></tr>';
-	}
+
+    html += '</td>';
+    html += '<td><strong>Squawk: </strong>';
 	
-	html += '<tr><td>Speed: ' 
+	if (selected && selected.squawk != '0000') {
+		html += selected.squawk;
+	} else {
+	    html += '&mdash;';
+	}
+
+    html += '</td>';
+
+	html += '</tr>';
+	html += '<tr>';
+	
+	html += '<td><strong>Speed: </strong>';
+
 	if (selected) {
 	    if (Metric) {
 	        html += Math.round(selected.speed * 1.852) + ' km/h';
@@ -298,51 +219,87 @@ function refreshSelected() {
 	        html += selected.speed + ' kt';
 	    }
 	} else {
-	    html += 'n/a';
+	    html += '&mdash;';
 	}
+
 	html += '</td>';
 	
-	if (selected) {
-        html += '<td>ICAO (hex): ' + selected.icao + '</td></tr>';
-    } else {
-        html += '<td>ICAO (hex): n/a</td></tr>'; // Something is wrong if we are here
-    }
+	// if (selected) {
+	// 	html += '<td><strong>ICAO (hex):</strong> ' + selected.icao + '</td></tr>';
+	// } else {
+	// 	html += '<td><strong>ICAO (hex):</strong> &mdash;</td></tr>'; // Something is wrong if we are here
+	// }
     
-    html += '<tr><td>Track: ' 
+    html += '<td><strong>Track: </strong>';
+
 	if (selected && selected.vTrack) {
 	    html += selected.track + '&deg;' + ' (' + normalizeTrack(selected.track, selected.vTrack)[1] +')';
 	} else {
-	    html += 'n/a';
+	    html += '&mdash;';
 	}
-	html += '</td><td>&nbsp;</td></tr>';
 
-	html += '<tr><td colspan="' + columns + '" align="center">Lat/Long: ';
+    html += '</td>';
+
+	html += '</tr>';
+	html += '<tr>';
+	
+	html += '<td><strong>Lat/Long: </strong>';
+
 	if (selected && selected.vPosition) {
-	    html += selected.latitude + ', ' + selected.longitude + '</td></tr>';
-	    
-	    // Let's show some extra data if we have site coordinates
-	    if (SiteShow) {
-            var siteLatLon  = new google.maps.LatLng(SiteLat, SiteLon);
-            var planeLatLon = new google.maps.LatLng(selected.latitude, selected.longitude);
-            var dist = google.maps.geometry.spherical.computeDistanceBetween (siteLatLon, planeLatLon);
-            
-            if (Metric) {
-                dist /= 1000;
-            } else {
-                dist /= 1852;
-            }
-            dist = (Math.round((dist)*10)/10).toFixed(1);
-            html += '<tr><td colspan="' + columns + '" align="center">Distance from Site: ' + dist +
-                (Metric ? ' km' : ' NM') + '</td></tr>';
-        } // End of SiteShow
+	    html += selected.latitude + ', ' + selected.longitude;
 	} else {
-	    if (SiteShow) {
-	        html += '<tr><td colspan="' + columns + '" align="center">Distance from Site: n/a ' + 
-	            (Metric ? ' km' : ' NM') + '</td></tr>';
-	    } else {
-    	    html += 'n/a</td></tr>';
-    	}
+		html += '&mdash;';
 	}
+
+	html += '</td>';
+	    
+	// Let's show some extra data if we have site coordinates
+	
+	if (SiteShow) {
+		var siteLatLon  = new google.maps.LatLng(SiteLat, SiteLon);
+		var planeLatLon = new google.maps.LatLng(selected.latitude, selected.longitude);
+		var dist = google.maps.geometry.spherical.computeDistanceBetween (siteLatLon, planeLatLon);
+
+		if (Metric) {
+			dist /= 1000;
+		} else {
+			dist /= 1852;
+		}
+		dist = (Math.round((dist)*10)/10).toFixed(1);
+
+		html += '<td><strong>Distance: </strong>';
+		if (selected)
+		{
+			html += dist + (Metric ? ' km' : ' NM');
+		}
+		else
+		{
+			html += '&mdash;';
+		}
+		html += '</td>';
+	}
+	else
+	{
+		html += '<td></td>';
+	}
+
+	html += '</tr>';
+
+	html += '<tr><td colspan="' + columns + '">';
+
+	if (selected && selected.flight != '') {
+		html += '<a href="http://www.flightradar24.com/' + selected.flight + '" class="external" target="_blank" title="View this flight on FlightRadar24"><img src="fr.png" /></a>';
+		html += '<a href="http://www.flightstats.com/go/FlightStatus/flightStatusByFlight.do?flightNumber=' + selected.flight + '" class="external" target="_blank" title="View this flight on FlightStats"><img src="fs.png" /></a>';
+		html += '<a href="http://www.flightaware.com/live/flight/' + selected.flight + '" class="external" target="_blank" title="View this flight on FlightAware"><img src="fa.png" /></a>';
+	}
+	else
+	{
+		html += '<span class="external" title="FlightRadar24 unavailable for this flight"><img src="fr-disabled.png" /></span>';
+		html += '<span class="external" title="FlightStats unavailable for this flight"><img src="fs-disabled.png" /></span>';
+		html += '<span class="external" title="FlightAware unavailable for this flight"><img src="fa-disabled.png" /></span>';
+	}
+
+	html += '</td></tr>';
 
 	html += '</table>';
 	
@@ -350,7 +307,7 @@ function refreshSelected() {
 }
 
 // Right now we have no means to validate the speed is good
-// Want to return (n/a) when we dont have it
+// Want to return (&mdash;) when we dont have it
 // TODO: Edit C code to add a valid speed flag
 // TODO: Edit js code to use said flag
 function normalizeSpeed(speed, valid) {
@@ -388,34 +345,27 @@ function normalizeTrack(track, valid){
 		x = ["North", "N", track]
 	}
 	if (!valid) {
-		x = [" ", "n/a", ""]
+		x = [" ", "&mdash;", ""]
 	}
 	return x
 }
 
 // Refeshes the larger table of all the planes
 function refreshTableInfo() {
-	var html = '<table id="tableinfo" width="100%">';
-	html += '<thead style="background-color: #BBBBBB; cursor: pointer;">';
-	html += '<td onclick="setASC_DESC(\'0\');sortTable(\'tableinfo\',\'0\');">ICAO</td>';
-	html += '<td onclick="setASC_DESC(\'1\');sortTable(\'tableinfo\',\'1\');">Flight</td>';
-	html += '<td onclick="setASC_DESC(\'2\');sortTable(\'tableinfo\',\'2\');" ' +
-	    'align="right">Squawk</td>';
-	html += '<td onclick="setASC_DESC(\'3\');sortTable(\'tableinfo\',\'3\');" ' +
-	    'align="right">Altitude</td>';
-	html += '<td onclick="setASC_DESC(\'4\');sortTable(\'tableinfo\',\'4\');" ' +
-	    'align="right">Speed</td>';
-        // Add distance column header to table if site coordinates are provided
-        if (SiteShow && (typeof SiteLat !==  'undefined' || typeof SiteLon !==  'undefined')) {
-            html += '<td onclick="setASC_DESC(\'5\');sortTable(\'tableinfo\',\'5\');" ' +
-                'align="right">Distance</td>';
-        }
-	html += '<td onclick="setASC_DESC(\'5\');sortTable(\'tableinfo\',\'6\');" ' +
-	    'align="right">Track</td>';
-	html += '<td onclick="setASC_DESC(\'6\');sortTable(\'tableinfo\',\'7\');" ' +
-	    'align="right">Msgs</td>';
-	html += '<td onclick="setASC_DESC(\'7\');sortTable(\'tableinfo\',\'8\');" ' +
-	    'align="right">Seen</td></thead><tbody>';
+	var html = '<table id="tableinfo">';
+	html += '<thead><tr>';
+	html += '<th onclick="setASC_DESC(\'0\');sortTable(\'tableinfo\',\'0\');" style="text-align: left">ICAO</th>';
+	html += '<th onclick="setASC_DESC(\'1\');sortTable(\'tableinfo\',\'1\');" style="text-align: left">Flight</th>';
+	html += '<th onclick="setASC_DESC(\'2\');sortTable(\'tableinfo\',\'2\');" style="text-align: right">Squawk</th>';
+	html += '<th onclick="setASC_DESC(\'3\');sortTable(\'tableinfo\',\'3\');" style="text-align: right">Altitude</th>';
+	html += '<th onclick="setASC_DESC(\'4\');sortTable(\'tableinfo\',\'4\');" style="text-align: right">Speed</th>';
+    // Add distance column header to table if site coordinates are provided
+    if (SiteShow && (typeof SiteLat !==  'undefined' || typeof SiteLon !==  'undefined')) {
+        html += '<th onclick="setASC_DESC(\'5\');sortTable(\'tableinfo\',\'5\');" style="text-align: right">Distance</th>';
+    }
+	html += '<th onclick="setASC_DESC(\'5\');sortTable(\'tableinfo\',\'6\');" style="text-align: right">Track</th>';
+	html += '<th onclick="setASC_DESC(\'6\');sortTable(\'tableinfo\',\'7\');" style="text-align: right">Msgs</th>';
+	html += '<th onclick="setASC_DESC(\'7\');sortTable(\'tableinfo\',\'8\');" style="text-align: right">Seen</th></tr></thead><tbody>';
 	for (var tablep in Planes) {
 		var tableplane = Planes[tablep]
 		if (!tableplane.reapable) {
@@ -438,13 +388,22 @@ function refreshTableInfo() {
 			}
 			
 			if (tableplane.vPosition == true) {
-				html += '<tr class="plane_table_row vPosition' + specialStyle + '">';
+				html += '<tr class="plane_table_row valid' + specialStyle + '">';
 			} else {
 				html += '<tr class="plane_table_row ' + specialStyle + '">';
 		    }
 		    
 			html += '<td>' + tableplane.icao + '</td>';
-			html += '<td>' + tableplane.flight + '</td>';
+			
+			if (tableplane.flight == "" || tableplane.flight == "????????")
+			{
+				html += '<td>&mdash;</td>';
+			}
+			else
+			{
+				html += '<td>' + tableplane.flight + '</td>';
+			}
+
 			if (tableplane.squawk != '0000' ) {
     			html += '<td align="right">' + tableplane.squawk + '</td>';
     	    } else {
@@ -458,26 +417,27 @@ function refreshTableInfo() {
     	        html += '<td align="right">' + tableplane.altitude + '</td>';
     	        html += '<td align="right">' + tableplane.speed + '</td>';
     	    }
-                        // Add distance column to table if site coordinates are provided
-                        if (SiteShow && (typeof SiteLat !==  'undefined' || typeof SiteLon !==  'undefined')) {
-                        html += '<td align="right">';
-                            if (tableplane.vPosition) {
-                                var siteLatLon  = new google.maps.LatLng(SiteLat, SiteLon);
-                                var planeLatLon = new google.maps.LatLng(tableplane.latitude, tableplane.longitude);
-                                var dist = google.maps.geometry.spherical.computeDistanceBetween (siteLatLon, planeLatLon);
-                                    if (Metric) {
-                                        dist /= 1000;
-                                    } else {
-                                        dist /= 1852;
-                                    }
-                                dist = (Math.round((dist)*10)/10).toFixed(1);
-                                html += dist;
-                            } else {
-                            html += '0';
-                            }
-                            html += '</td>';
-                        }
-			
+
+			// Add distance column to table if site coordinates are provided
+			if (SiteShow && (typeof SiteLat !==  'undefined' || typeof SiteLon !==  'undefined')) {
+			html += '<td align="right">';
+			    if (tableplane.vPosition) {
+			        var siteLatLon  = new google.maps.LatLng(SiteLat, SiteLon);
+			        var planeLatLon = new google.maps.LatLng(tableplane.latitude, tableplane.longitude);
+			        var dist = google.maps.geometry.spherical.computeDistanceBetween (siteLatLon, planeLatLon);
+			            if (Metric) {
+			                dist /= 1000;
+			            } else {
+			                dist /= 1852;
+			            }
+			        dist = (Math.round((dist)*10)/10).toFixed(1);
+			        html += dist;
+			    } else {
+			    html += '0';
+			    }
+			    html += '</td>';
+			}
+
 			html += '<td align="right">';
 			if (tableplane.vTrack) {
     			 html += normalizeTrack(tableplane.track, tableplane.vTrack)[2];
@@ -496,9 +456,9 @@ function refreshTableInfo() {
 	document.getElementById('planes_table').innerHTML = html;
 
 	if (SpecialSquawk) {
-    	$('#SpecialSquawkWarning').css('display', 'inline');
+    	$('.squawk-warning').css('display', 'inline');
     } else {
-        $('#SpecialSquawkWarning').css('display', 'none');
+        $('.squawk-warning').css('display', 'none');
     }
 
 	// Click event for table

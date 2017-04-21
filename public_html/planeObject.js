@@ -151,7 +151,7 @@ var planeObject = {
 
 			// If no packet in over 58 seconds, consider the plane reapable
 			// This way we can hold it, but not show it just in case the plane comes back
-			if (this.seen > 58) {
+			if (this.seen > 90) {
 				this.reapable = true;
 				if (this.marker) {
 					this.marker.setMap(null);
